@@ -21,8 +21,9 @@
 #include "SDL_internal.h"
 
 #include <errno.h>
+#include <ogc/mutex.h>
 #include <ogc/cond.h>
-#include <ogc/timesupp.h>
+#include <ogcsys.h>
 
 #include "SDL_sysmutex_c.h"
 

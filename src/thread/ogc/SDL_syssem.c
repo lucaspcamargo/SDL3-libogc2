@@ -21,8 +21,38 @@
 #include "SDL_internal.h"
 
 #include <errno.h>
+#include <unistd.h>
 #include <ogc/semaphore.h>
-#include <ogc/timesupp.h>
+#include <ogc/lwp_watchdog.h>
+#include <ogcsys.h>
+
+/* LWP_SemTryWait / LWP_SemTimedWait are not present in current libogc.
+   Implement them using LWP_SemGetValue + LWP_SemWait. */
+
+static int ogc_sem_trywait(sem_t sem)
+{
+    u32 val;
+    if (LWP_SemGetValue(sem, &val) != 0 || val == 0) {
+        return EAGAIN;
+    }
+    return LWP_SemWait(sem);
+}
+
+static int ogc_sem_timedwait(sem_t sem, const struct timespec *tv)
+{
+    const u64 timeout_ns = (u64)tv->tv_sec * TB_NSPERSEC + (u64)tv->tv_nsec;
+    const u64 deadline   = ticks_to_nanosecs(gettime()) + timeout_ns;
+
+    while (1) {
+        if (ogc_sem_trywait(sem) == 0) {
+            return 0;
+        }
+        if (ticks_to_nanosecs(gettime()) >= deadline) {
+            return ETIMEDOUT;
+        }
+        usleep(500);
+    }
+}
 
 struct SDL_Semaphore
 {
@@ -66,7 +96,7 @@ bool SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
 
     if (timeoutNS == 0) {
         /* Poll - try to acquire without blocking */
-        const int rc = LWP_SemTryWait(sem->sem);
+        const int rc = ogc_sem_trywait(sem->sem);
         if (rc != 0) {
             retval = false;
         }
@@ -85,7 +115,7 @@ bool SDL_WaitSemaphoreTimeoutNS(SDL_Semaphore *sem, Sint64 timeoutNS)
         tv.tv_sec = (long)(ms / TB_MSPERSEC);
         tv.tv_nsec = (long)((ms % TB_MSPERSEC) * TB_NSPERMS);
 
-        const int rc = LWP_SemTimedWait(sem->sem, &tv);
+        const int rc = ogc_sem_timedwait(sem->sem, &tv);
         if (rc != 0) {
             if (rc == ETIMEDOUT) {
                 retval = false;

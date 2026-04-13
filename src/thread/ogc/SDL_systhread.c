@@ -27,6 +27,17 @@
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
 
+/* Current libogc only defines LWP_PRIO_IDLE (0) and LWP_PRIO_HIGHEST (127). */
+#ifndef LWP_PRIO_LOWEST
+#define LWP_PRIO_LOWEST        1
+#endif
+#ifndef LWP_PRIO_NORMAL
+#define LWP_PRIO_NORMAL        64
+#endif
+#ifndef LWP_PRIO_TIME_CRITICAL
+#define LWP_PRIO_TIME_CRITICAL LWP_PRIO_HIGHEST
+#endif
+
 static void *RunThread(void *data)
 {
     SDL_RunThread((SDL_Thread *)data);
@@ -37,7 +48,7 @@ bool SDL_SYS_CreateThread(SDL_Thread *thread,
                           SDL_FunctionPointer pfnBeginThread,
                           SDL_FunctionPointer pfnEndThread)
 {
-    int priority = LWP_GetThreadPriority(LWP_THREAD_NULL);
+    int priority = LWP_PRIO_NORMAL;
 
     /* pfnBeginThread and pfnEndThread are not used on OGC */
     (void)pfnBeginThread;
@@ -74,9 +85,7 @@ bool SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
     } else {
         value = LWP_PRIO_NORMAL;
     }
-    if (LWP_SetThreadPriority(LWP_THREAD_NULL, value) < 0) {
-        return SDL_SetError("LWP_SetThreadPriority() failed");
-    }
+    LWP_SetThreadPriority(LWP_THREAD_NULL, value);
     return true;
 }
 
@@ -87,7 +96,7 @@ void SDL_SYS_WaitThread(SDL_Thread *thread)
 
 void SDL_SYS_DetachThread(SDL_Thread *thread)
 {
-    LWP_DetachThread(thread->handle);
+    (void)thread; /* LWP_DetachThread not available in libogc; thread runs to completion */
 }
 
 #endif /* SDL_THREAD_OGC */

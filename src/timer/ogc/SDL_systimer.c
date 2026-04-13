@@ -23,12 +23,12 @@
 
 #ifdef SDL_TIMER_OGC
 
-#include <ogc/timesupp.h>
 #include <ogcsys.h>
+#include <ogc/lwp_watchdog.h>
 
 Uint64 SDL_GetPerformanceCounter(void)
 {
-    return __SYS_GetSystemTime();
+    return gettime();
 }
 
 Uint64 SDL_GetPerformanceFrequency(void)
