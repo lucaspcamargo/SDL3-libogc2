@@ -42,7 +42,9 @@
 #include <ogc/system.h>
 #include <ogc/video.h>
 
+#ifdef SDL_VIDEO_OPENGL
 #include <opengx.h>
+#endif
 
 #define DEFAULT_FIFO_SIZE 256 * 1024
 
@@ -173,8 +175,6 @@ static void setup_video_mode(SDL_VideoDevice *_this, GXRModeObj *vmode)
     VIDEO_SetBlack(false);
     VIDEO_Flush();
 
-    VIDEO_WaitForFlush();
-
     /* Setup the EFB -> XFB copy operation */
     GX_SetDispCopySrc(0, 0, vmode->fbWidth, vmode->efbHeight);
     GX_SetDispCopyDst(vmode->fbWidth, vmode->xfbHeight);
@@ -288,6 +288,7 @@ bool OGC_VideoInit(SDL_VideoDevice *_this)
     VIDEO_Init();
 
     vmode = VIDEO_GetPreferredMode(NULL);
+    if (!vmode) vmode = &TVNtsc480IntDf;
 
     videodata->gp_fifo = memalign(32, DEFAULT_FIFO_SIZE);
     memset(videodata->gp_fifo, 0, DEFAULT_FIFO_SIZE); // This should NOT be SDL_memset()
@@ -354,8 +355,10 @@ void OGC_video_flip(SDL_VideoDevice *_this, bool vsync)
     SDL_VideoData *videodata = _this->internal;
     void *xfb = OGC_video_get_xfb(_this);
 
+#ifdef SDL_VIDEO_OPENGL
     if (_this->gl_config.driver_loaded &&
         ogx_prepare_swap_buffers() < 0) return;
+#endif
 
 #ifdef __wii__
     OGC_draw_cursor(_this);

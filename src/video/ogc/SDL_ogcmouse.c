@@ -38,6 +38,7 @@
 #include <ogc/cache.h>
 #include <ogc/gx.h>
 #include <ogcsys.h>
+#include <ogc/lwp_watchdog.h>
 #ifdef SDL_VIDEO_OPENGL
 #include <opengx.h>
 #endif
@@ -387,7 +388,7 @@ bool OGC_prep_draw_cursor(SDL_VideoDevice *_this)
     }
 
     /* Avoid drawing too often. 30 FPS should be enough */
-    current_time_ms = __SYS_GetSystemTime() / TB_TIMER_CLOCK;
+    current_time_ms = gettime() / TB_TIMER_CLOCK;
     elapsed_ms = current_time_ms - last_draw_ms;
     if (elapsed_ms < 33) return false;
 
