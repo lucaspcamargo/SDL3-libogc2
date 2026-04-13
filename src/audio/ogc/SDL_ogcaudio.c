@@ -79,9 +79,9 @@ static SDL_INLINE void contextUnlock(SDL_AudioDevice *device)
     LWP_MutexUnlock(device->hidden->lock);
 }
 
-static void audio_frame_finished(AESNDPB *pb, u32 state)
+static void audio_frame_finished(AESNDPB *pb, u32 state, void *cbArg)
 {
-    SDL_AudioDevice *device = (SDL_AudioDevice *)AESND_GetVoiceUserData(pb);
+    SDL_AudioDevice *device = (SDL_AudioDevice *)cbArg;
 
     if (state == VOICE_STATE_STREAM) {
         const size_t buffer_size = DMA_BUFFER_SIZE;
@@ -156,7 +156,7 @@ static bool OGCAUDIO_OpenDevice(SDL_AudioDevice *device)
     /* Update the device format */
     SDL_UpdatedAudioDeviceFormat(device);
 
-    hidden->voice = AESND_AllocateVoice(audio_frame_finished);
+    hidden->voice = AESND_AllocateVoiceWithArg(audio_frame_finished, device);
     if (hidden->voice == NULL) {
         LWP_SemDestroy(hidden->available_buffers);
         SDL_free(hidden);
@@ -164,7 +164,6 @@ static bool OGCAUDIO_OpenDevice(SDL_AudioDevice *device)
     }
 
     // start audio
-    AESND_SetVoiceUserData(hidden->voice, device);
     AESND_SetVoiceFormat(hidden->voice, hidden->format);
     AESND_SetVoiceFrequency(hidden->voice, device->spec.freq);
     AESND_SetVoiceBuffer(hidden->voice, hidden->dma_buffers[0], DMA_BUFFER_SIZE);
