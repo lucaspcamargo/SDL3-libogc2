@@ -37,8 +37,10 @@
 #include <malloc.h>
 #include <ogc/cache.h>
 #include <ogc/gx.h>
-#include <ogc/timesupp.h>
+#include <ogcsys.h>
+#ifdef SDL_VIDEO_OPENGL
 #include <opengx.h>
+#endif
 #include <wiiuse/wpad.h>
 
 struct SDL_CursorData
@@ -358,8 +360,10 @@ bool OGC_prep_draw_cursor(SDL_VideoDevice *_this)
     SDL_Renderer *renderer = SDL_GetRenderer(_this->windows);
     if (renderer && renderer->target) return false;
 
+#ifdef SDL_VIDEO_OPENGL
     if (_this->gl_config.driver_loaded &&
         ogx_prepare_swap_buffers() < 0) return false;
+#endif
 
     /* If this function is called repeatedly during the same frame, we assume
      * that this is one of those applications that call SDL_OGC_GL_SwapWindow,
