@@ -25,11 +25,6 @@
 #include <aesndlib.h>
 #include <ogcsys.h>
 
-#include <ogc/mutex.h>
-#include <ogc/semaphore.h>
-
-
-
 #define NUM_BUFFERS            4 /* -- Minimum 2! */
 #define SAMPLES_PER_DMA_BUFFER (DSP_STREAMBUFFER_SIZE)
 #define DMA_BUFFER_SIZE        (SAMPLES_PER_DMA_BUFFER * 2 * sizeof(short))
@@ -45,8 +40,8 @@ struct SDL_PrivateAudioData
     Uint8 bytes_per_sample;
     s8 nextbuf;
     s8 playing_buffer;
-    mutex_t lock;
-    sem_t available_buffers;
+    SDL_Mutex *lock;
+    SDL_Semaphore *available_buffers;
 };
 
 #endif /* _SDL_ogcaudio_h_ */

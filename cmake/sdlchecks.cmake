@@ -1004,6 +1004,8 @@ macro(CheckPTHREAD)
     elseif(EMSCRIPTEN)
       set(PTHREAD_CFLAGS "-D_REENTRANT -pthread")
       set(PTHREAD_LDFLAGS "-pthread")
+    elseif(OGC)
+      # pthread support is provided by libogc2/devkitPPC; no extra flags needed
     elseif(QNX)
       # pthread support is baked in
     elseif(HURD)
@@ -1085,8 +1087,12 @@ macro(CheckPTHREAD)
         endif()
       endif()
 
+      if(OGC)
+        sdl_sources("${SDL3_SOURCE_DIR}/src/thread/pthread_ogc/SDL_systhread.c")
+      else()
+        sdl_sources("${SDL3_SOURCE_DIR}/src/thread/pthread/SDL_systhread.c")
+      endif()
       sdl_sources(
-        "${SDL3_SOURCE_DIR}/src/thread/pthread/SDL_systhread.c"
         "${SDL3_SOURCE_DIR}/src/thread/pthread/SDL_sysmutex.c"   # Can be faked, if necessary
         "${SDL3_SOURCE_DIR}/src/thread/pthread/SDL_syscond.c"    # Can be faked, if necessary
         "${SDL3_SOURCE_DIR}/src/thread/pthread/SDL_sysrwlock.c"   # Can be faked, if necessary

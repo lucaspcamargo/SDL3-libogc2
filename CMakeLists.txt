@@ -147,7 +147,7 @@ endif()
 #  for the time being. This default will change to ON once this becomes
 #  commonly supported in browsers or the Emscripten team makes a single
 #  binary work everywhere.
-if (UNIX_OR_MAC_SYS AND NOT EMSCRIPTEN)
+if ((UNIX_OR_MAC_SYS AND NOT EMSCRIPTEN) OR OGC)
   set(SDL_PTHREADS_DEFAULT ON)
 else()
   set(SDL_PTHREADS_DEFAULT OFF)
@@ -3344,13 +3344,7 @@ elseif(OGC)
     set(HAVE_SDL_JOYSTICK TRUE)
   endif()
 
-  set(SDL_THREAD_OGC 1)
-  sdl_glob_sources("${SDL3_SOURCE_DIR}/src/thread/ogc/*.c")
-  sdl_sources(
-    "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_sysrwlock.c"
-    "${SDL3_SOURCE_DIR}/src/thread/generic/SDL_systls.c"
-  )
-  set(HAVE_SDL_THREADS TRUE)
+  CheckPTHREAD()
 
   set(SDL_TIME_OGC 1)
   sdl_glob_sources("${SDL3_SOURCE_DIR}/src/time/ogc/*.c")

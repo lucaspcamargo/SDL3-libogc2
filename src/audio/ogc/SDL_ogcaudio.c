@@ -71,12 +71,12 @@ static bool FindAudioFormat(SDL_AudioDevice *device)
 /* fully local functions related to the wavebufs / DSP, not the same as the SDL-wide mixer lock */
 static SDL_INLINE void contextLock(SDL_AudioDevice *device)
 {
-    LWP_MutexLock(device->hidden->lock);
+    SDL_LockMutex(device->hidden->lock);
 }
 
 static SDL_INLINE void contextUnlock(SDL_AudioDevice *device)
 {
-    LWP_MutexUnlock(device->hidden->lock);
+    SDL_UnlockMutex(device->hidden->lock);
 }
 
 static void audio_frame_finished(AESNDPB *pb, u32 state, void *cbArg)
@@ -101,7 +101,7 @@ static void audio_frame_finished(AESNDPB *pb, u32 state, void *cbArg)
         /* If a frame has finished playing, it means that the corresponding
          * buffer is no longer in use and can be filled up again. We signal
          * this event to the audio thread via a semaphore. */
-        LWP_SemPost(device->hidden->available_buffers);
+        SDL_SignalSemaphore(device->hidden->available_buffers);
     } else if (state == VOICE_STATE_STOPPED) {
         contextLock(device);
         device->hidden->playing_buffer = -1;
@@ -130,12 +130,12 @@ static bool OGCAUDIO_OpenDevice(SDL_AudioDevice *device)
     AESND_Pause(true);
 
     /* Initialise internal state */
-    LWP_MutexInit(&hidden->lock, false);
+    hidden->lock = SDL_CreateMutex();
     /* We set the initial number of available buffers to NUM_BUFFERS - 1, since
      * SDL first calls GetDeviceBuf() and starts filling it without first
      * calling WaitDevice(). So we consider the first buffer to be busy already
      * at start. */
-    LWP_SemInit(&hidden->available_buffers, NUM_BUFFERS - 1, NUM_BUFFERS);
+    hidden->available_buffers = SDL_CreateSemaphore(NUM_BUFFERS - 1);
 
     if (device->spec.freq <= 0 || device->spec.freq > 144000) {
         device->spec.freq = (int)DSP_DEFAULT_FREQ;
@@ -158,7 +158,7 @@ static bool OGCAUDIO_OpenDevice(SDL_AudioDevice *device)
 
     hidden->voice = AESND_AllocateVoiceWithArg(audio_frame_finished, device);
     if (hidden->voice == NULL) {
-        LWP_SemDestroy(hidden->available_buffers);
+        SDL_DestroySemaphore(hidden->available_buffers);
         SDL_free(hidden);
         return SDL_SetError("Could not allocate audio voice");
     }
@@ -196,7 +196,7 @@ static bool OGCAUDIO_WaitDevice(SDL_AudioDevice *device)
     s8 nextbuf;
 
     /* This will block until at least one buffer is available for writing. */
-    LWP_SemWait(device->hidden->available_buffers);
+    SDL_WaitSemaphore(device->hidden->available_buffers);
 
     nextbuf = device->hidden->nextbuf;
     device->hidden->nextbuf = (nextbuf + 1) % NUM_BUFFERS;
@@ -215,7 +215,8 @@ static void OGCAUDIO_CloseDevice(SDL_AudioDevice *device)
     if (device->hidden) {
         struct SDL_PrivateAudioData *hidden = device->hidden;
 
-        LWP_SemDestroy(hidden->available_buffers);
+        SDL_DestroySemaphore(hidden->available_buffers);
+        SDL_DestroyMutex(hidden->lock);
         if (hidden->voice) {
             AESND_SetVoiceStop(hidden->voice, true);
             AESND_FreeVoice(hidden->voice);
@@ -230,7 +231,7 @@ static void OGCAUDIO_CloseDevice(SDL_AudioDevice *device)
 
 static void OGCAUDIO_ThreadInit(SDL_AudioDevice *device)
 {
-    LWP_SetThreadPriority(LWP_THREAD_NULL, 80);
+    /* Thread priority is not configurable via pthreads on OGC */
 }
 
 static bool OGCAUDIO_Init(SDL_AudioDriverImpl *impl)
