@@ -202,7 +202,7 @@ static int device_index_to_joypad_index(int device_index)
     int count = 0;
 
     for (int i = 0; i < MAX_JOYSTICKS; i++) {
-        if (s_connected_instances[i] >= 0) {
+        if (s_connected_instances[i] != 0) {
             if (count == device_index)
                 return i;
             count++;
@@ -214,11 +214,11 @@ static int device_index_to_joypad_index(int device_index)
     return -1;
 }
 
-static int device_index_to_instance(int device_index)
+static SDL_JoystickID device_index_to_instance(int device_index)
 {
     int index = device_index_to_joypad_index(device_index);
     if (index < 0)
-        return -1;
+        return 0;
     return s_connected_instances[index];
 }
 
@@ -245,9 +245,9 @@ static void report_joystick(int index, int connected)
 
     /* First, if the joystick was connected with a different expansion, remove
      * it */
-    if (s_connected_instances[index] >= 0) {
+    if (s_connected_instances[index] != 0) {
         SDL_PrivateJoystickRemoved(s_connected_instances[index]);
-        s_connected_instances[index] = -1;
+        s_connected_instances[index] = 0;
     }
 
     if (connected) {
@@ -326,7 +326,7 @@ static bool OGC_JoystickInit(void)
 
     /* Initialize the needed variables */
     for (int i = 0; i < MAX_JOYSTICKS; i++) {
-        s_connected_instances[i] = -1;
+        s_connected_instances[i] = 0;
     }
     return true;
 }
@@ -336,7 +336,7 @@ static int OGC_JoystickGetCount(void)
     int count = 0;
 
     for (int i = 0; i < MAX_JOYSTICKS; i++) {
-        if (s_connected_instances[i] >= 0)
+        if (s_connected_instances[i] != 0)
             count++;
     }
     return count;
