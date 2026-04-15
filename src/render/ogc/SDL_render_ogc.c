@@ -435,10 +435,10 @@ static bool OGC_RenderSetClipRect(SDL_Renderer *renderer, SDL_RenderCommand *cmd
                       renderer->view->viewport.y + rect->y,
                       rect->w, rect->h);
     } else {
-        GX_SetScissor(renderer->view->viewport.x,
-                      renderer->view->viewport.y,
-                      renderer->view->viewport.w,
-                      renderer->view->viewport.h);
+        GX_SetScissor(renderer->view->pixel_viewport.x,
+                      renderer->view->pixel_viewport.y,
+                      renderer->view->pixel_viewport.w,
+                      renderer->view->pixel_viewport.h);
     }
 
     return true;
@@ -483,9 +483,10 @@ static bool OGC_RenderClear(SDL_Renderer *renderer, SDL_RenderCommand *cmd)
     GX_End();
     data->ops_after_present++;
 
-    /* Restore the viewport */
-    OGC_set_viewport(renderer->view->viewport.x, renderer->view->viewport.y,
-                     renderer->view->viewport.w, renderer->view->viewport.h);
+    /* Restore the viewport. Use pixel_viewport because viewport.w/h may be -1
+     * (meaning "full window") — pixel_viewport always holds the resolved size. */
+    OGC_set_viewport(renderer->view->pixel_viewport.x, renderer->view->pixel_viewport.y,
+                     renderer->view->pixel_viewport.w, renderer->view->pixel_viewport.h);
     return true;
 }
 
