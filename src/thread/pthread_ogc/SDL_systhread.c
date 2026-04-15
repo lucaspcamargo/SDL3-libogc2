@@ -29,6 +29,7 @@
 
 #include <pthread.h>
 #include <errno.h>
+#include <tuxedo/thread.h>
 
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
@@ -81,7 +82,22 @@ SDL_ThreadID SDL_GetCurrentThreadID(void)
 
 bool SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
-    // libogc2 pthread does not expose scheduler parameter APIs
+    /* libogc2 pthread does not expose scheduler parameter APIs, but we can
+     * reach the underlying KThread directly via KThreadGetSelf() (reads SPRG2)
+     * and adjust its priority with KThreadSetPrio().
+     *
+     * KThread priority scale: KTHR_MAX_PRIO=0 (highest) .. KTHR_MAIN_PRIO=63
+     * .. KTHR_MIN_PRIO=127 (lowest).  We map SDL's four levels onto that range,
+     * keeping them safely above the hardware-interrupt priority band (< 16). */
+    u16 prio;
+    switch (priority) {
+    case SDL_THREAD_PRIORITY_LOW:           prio = 80; break;
+    case SDL_THREAD_PRIORITY_NORMAL:        prio = KTHR_MAIN_PRIO; break;
+    case SDL_THREAD_PRIORITY_HIGH:          prio = 32; break;
+    case SDL_THREAD_PRIORITY_TIME_CRITICAL: prio = 16; break;
+    default:                                prio = KTHR_MAIN_PRIO; break;
+    }
+    KThreadSetPrio(KThreadGetSelf(), prio);
     return true;
 }
 

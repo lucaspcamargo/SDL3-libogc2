@@ -6,7 +6,7 @@ Actually, this is a fork of a fork, majorly [implemented by leap0x7b](https://gi
 
 The changes made were in order to use the latest toolchain and libs, and to uniformize threading code around the (new?) pthreads support.
 
-One missing bit is to give the audio thread higher priority (this does not seem to be possible yet with the pthreads implementation by itself).
+Thread priority is implemented by reaching the underlying KThread directly via `KThreadGetSelf()` (reads SPRG2) and `KThreadSetPrio()`, since libogc2's pthread layer does not expose `pthread_setschedparam`. The audio thread is raised to `TIME_CRITICAL` priority on startup to prevent buffer underruns.
 
 ## Overview
 
@@ -49,8 +49,10 @@ libogc2 provides two thread systems that coexist in the same binary:
 This port uses **pthreads** for all SDL threading (`SDL_CreateThread`, `SDL_CreateMutex`,
 `SDL_CreateSemaphore`, etc.). These map to KThread via the standard newlib syscall shims
 (`__syscall_lock_acquire` → `KMutexLock`). The scheduler API
-(`pthread_getschedparam` / `pthread_setschedparam`) is not available, so
-`SDL_SYS_SetThreadPriority` is a no-op (see `src/thread/pthread_ogc/SDL_systhread.c`).
+(`pthread_getschedparam` / `pthread_setschedparam`) is not available, but
+`SDL_SYS_SetThreadPriority` is implemented by accessing the KThread layer directly:
+`KThreadGetSelf()` reads the current thread pointer from SPRG2, and `KThreadSetPrio()`
+adjusts its priority (see `src/thread/pthread_ogc/SDL_systhread.c`).
 
 Do **not** mix SDL synchronisation primitives with raw LWP calls on the same shared
 data — they use different underlying locks.
@@ -84,6 +86,8 @@ cmake --build build-gc
 - **`[mouse]`** skip opengx mouse code when OpenGL is disabled
 - **`[mouse/video]`** guard opengx mouse code; fall back to a standard video mode when preferred mode detection fails
 - **`[thread]`** switch OGC threading backend from LWP to pthreads; fix audio driver to use SDL mutex/semaphore primitives; fix `SDL_runapp.c` generic fallback overriding the Wii-specific `SDL_RunApp` (which meant `WPAD_Init` was never called)
+- **`[thread/audio]`** implement `SDL_SYS_SetThreadPriority` via `KThreadGetSelf`/`KThreadSetPrio`; raise audio thread to `TIME_CRITICAL` priority to prevent buffer underruns
+- **`[render_ogc]`** fix viewport restore after clear using `pixel_viewport` instead of `viewport` (`.w/.h` are `-1` when using the default full-window viewport)
 
 ---
 

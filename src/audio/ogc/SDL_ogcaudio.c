@@ -231,7 +231,10 @@ static void OGCAUDIO_CloseDevice(SDL_AudioDevice *device)
 
 static void OGCAUDIO_ThreadInit(SDL_AudioDevice *device)
 {
-    /* Thread priority is not configurable via pthreads on OGC */
+    /* Raise the audio thread above the main thread so the DSP DMA buffers are
+     * refilled before the hardware runs dry.  SDL_SYS_SetThreadPriority on OGC
+     * uses KThreadSetPrio(KThreadGetSelf(), ...) under the hood. */
+    SDL_SetCurrentThreadPriority(SDL_THREAD_PRIORITY_TIME_CRITICAL);
 }
 
 static bool OGCAUDIO_Init(SDL_AudioDriverImpl *impl)
